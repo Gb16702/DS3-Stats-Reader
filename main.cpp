@@ -158,9 +158,14 @@ public:
 };
 
 void setupRoutes(httplib::Server& server, DS3DeathCounter& counter, std::chrono::steady_clock::time_point startTime) {
-    server.Get("/health", [startTime](const httplib::Request& req, httplib::Response& res) {
-        res.set_header("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
+    server.set_post_routing_handler([](const httplib::Request& req, httplib::Response& res) {
+        auto origin = req.get_header_value("Origin");
+        if (ALLOWED_ORIGIN == origin) {
+            res.set_header("Access-Control-Allow-Origin", origin);
+        }
+    });
 
+    server.Get("/health", [startTime](const httplib::Request& req, httplib::Response& res) {
         auto now = std::chrono::steady_clock::now();
         auto uptimeSeconds = std::chrono::duration_cast<std::chrono::seconds>(now - startTime).count();
 
@@ -173,9 +178,7 @@ void setupRoutes(httplib::Server& server, DS3DeathCounter& counter, std::chrono:
         res.set_content(response.dump(), "application/json");
     });
     
-    server.Get("/api/stats", [&](const httplib::Request& req, httplib::Response& res) {
-        res.set_header("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
-        
+    server.Get("/api/stats", [&](const httplib::Request& req, httplib::Response& res) {        
         auto initializeResult = counter.Initialize();
         if (!initializeResult) {
             json response = {
@@ -186,7 +189,7 @@ void setupRoutes(httplib::Server& server, DS3DeathCounter& counter, std::chrono:
                 }}
             };
 
-            res.status = 503;
+            res.status = httplib::StatusCode::ServiceUnavailable_503;
             res.set_content(response.dump(), "application/json");
             return;
         }
@@ -201,7 +204,7 @@ void setupRoutes(httplib::Server& server, DS3DeathCounter& counter, std::chrono:
                 }}
             };
 
-            res.status = 500;
+            res.status = httplib::StatusCode::InternalServerError_500;
             res.set_content(response.dump(), "application/json");
             return;
         }
