@@ -77,7 +77,7 @@ public:
             return false;
         }
 
-        SIZE_T bytesRead;
+        SIZE_T bytesRead = 0;
         return ReadProcessMemory(processHandle, reinterpret_cast<LPCVOID>(address),
             &value, sizeof(T), &bytesRead) && bytesRead == sizeof(T);
     }
@@ -92,7 +92,7 @@ public:
             return std::unexpected(MemoryReaderError::ProcessNotFound);
         }
 
-        processHandle = OpenProcess(PROCESS_VM_READ, FALSE, processId);
+        processHandle = OpenProcess(PROCESS_VM_READ | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
         if (!processHandle) {
             return std::unexpected(MemoryReaderError::AccessDenied);
         }
@@ -128,6 +128,10 @@ public:
 
         uintptr_t gameDataManAddress = 0;
         if (!reader.ReadMemory(pointerAddress, gameDataManAddress)) {
+            return std::unexpected(MemoryReaderError::ReadFailed);
+        }
+
+        if (gameDataManAddress == 0) {
             return std::unexpected(MemoryReaderError::ReadFailed);
         }
 
