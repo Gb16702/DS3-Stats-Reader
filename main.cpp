@@ -135,6 +135,28 @@ private:
 
     static constexpr wchar_t PROCESS_NAME[] = L"DarkSoulsIII.exe";
 
+    std::expected<int, MemoryReaderError> ReadGameData(uintptr_t basePointer, uintptr_t offset) {
+        uintptr_t pointerAddress = reader.GetModuleBase() + basePointer;
+
+        uintptr_t baseAddress = 0;
+        if (!reader.ReadMemory(pointerAddress, baseAddress)) {
+            return std::unexpected(MemoryReaderError::ReadFailed);
+        }
+
+        if (baseAddress == 0) {
+            return std::unexpected(MemoryReaderError::ReadFailed);
+        }
+
+        uintptr_t dataAddress = baseAddress + offset;
+
+        int value = 0;
+        if (!reader.ReadMemory(dataAddress, value)) {
+            return std::unexpected(MemoryReaderError::ReadFailed);
+        }
+
+        return value;
+    }
+
 public:
     std::expected<void, MemoryReaderError> Initialize() {
         return reader.Initialize(PROCESS_NAME);
@@ -145,47 +167,11 @@ public:
     }
 
     std::expected<int, MemoryReaderError> GetDeathCount() {
-        uintptr_t pointerAddress = reader.GetModuleBase() + GAMEDATAMAN_POINTER;
-
-        uintptr_t gameDataManAddress = 0;
-        if (!reader.ReadMemory(pointerAddress, gameDataManAddress)) {
-            return std::unexpected(MemoryReaderError::ReadFailed);
-        }
-
-        if (gameDataManAddress == 0) {
-            return std::unexpected(MemoryReaderError::ReadFailed);
-        }
-
-        uintptr_t deathCountAddress = gameDataManAddress + DEATH_COUNT_OFFSET;
-
-        int deathCount = 0;
-        if (!reader.ReadMemory(deathCountAddress, deathCount)) {
-            return std::unexpected(MemoryReaderError::ReadFailed);
-        }
-
-        return deathCount;
+        return ReadGameData(GAMEDATAMAN_POINTER, DEATH_COUNT_OFFSET);
     }
 
     std::expected<int, MemoryReaderError> GetPlayTime() {
-        uintptr_t pointerAddress = reader.GetModuleBase() + GAMEDATAMAN_POINTER;
-
-        uintptr_t gameDataManAddress = 0;
-        if (!reader.ReadMemory(pointerAddress, gameDataManAddress)) {
-            return std::unexpected(MemoryReaderError::ReadFailed);
-        }
-
-        if (gameDataManAddress == 0) {
-            return std::unexpected(MemoryReaderError::ReadFailed);
-        }
-
-        uintptr_t playTimeAddress = gameDataManAddress + PLAYTIME_OFFSET;
-
-        int playTime = 0;
-        if (!reader.ReadMemory(playTimeAddress, playTime)) {
-            return std::unexpected(MemoryReaderError::ReadFailed);
-        }
-
-        return playTime;
+        return ReadGameData(GAMEDATAMAN_POINTER, PLAYTIME_OFFSET);
     }
 };
 
