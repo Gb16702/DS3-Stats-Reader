@@ -25,8 +25,9 @@ enum class LogLevel {
 };
 
 void log(LogLevel level, const std::string& message) {
-    auto now = std::time(nullptr);
-    auto tm = *std::localtime(&now);
+    std::time_t now = std::time(nullptr);
+    std::tm tm{};
+    localtime_s(&tm, &now);
 
     const char* levelStr = "INFO ";
     switch (level) {
@@ -161,7 +162,7 @@ private:
 
     static constexpr wchar_t PROCESS_NAME[] = L"DarkSoulsIII.exe";
 
-    std::expected<int, MemoryReaderError> ReadGameData(uintptr_t basePointer, uintptr_t offset) {
+    std::expected<uint32_t, MemoryReaderError> ReadGameData(uintptr_t basePointer, uintptr_t offset) {
         uintptr_t pointerAddress = reader.GetModuleBase() + basePointer;
 
         uintptr_t baseAddress = 0;
@@ -175,7 +176,7 @@ private:
 
         uintptr_t dataAddress = baseAddress + offset;
 
-        int value = 0;
+        uint32_t value = 0;
         if (!reader.ReadMemory(dataAddress, value)) {
             return std::unexpected(MemoryReaderError::ReadFailed);
         }
@@ -192,19 +193,20 @@ public:
         return reader.IsInitialized();
     }
 
-    std::expected<int, MemoryReaderError> GetDeathCount() {
+    std::expected<uint32_t, MemoryReaderError> GetDeathCount() {
         return ReadGameData(GAMEDATAMAN_POINTER, DEATH_COUNT_OFFSET);
     }
 
-    std::expected<int, MemoryReaderError> GetPlayTime() {
+    std::expected<uint32_t, MemoryReaderError> GetPlayTime() {
         return ReadGameData(GAMEDATAMAN_POINTER, PLAYTIME_OFFSET);
     }
 };
 
 void streamStats(DS3StatsReader& statsReader, httplib::DataSink& sink) {
-    int lastDeathCount = -1;
-    int lastPlayTime = -1;
+    uint32_t lastDeathCount = 0;
+    uint32_t lastPlayTime = 0;
     bool wasConnected = false;
+    bool firstRun = true;
 
     log(LogLevel::INFO, "Client connected to SSE stream");
 
@@ -217,7 +219,7 @@ void streamStats(DS3StatsReader& statsReader, httplib::DataSink& sink) {
                     wasConnected = false;
                 }
 
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                std::this_thread::sleep_for(std::chrono::seconds(2));
                 continue;
             }
         }
@@ -233,13 +235,13 @@ void streamStats(DS3StatsReader& statsReader, httplib::DataSink& sink) {
         json data;
         bool changed = false;
 
-        if (deathsResult && *deathsResult != lastDeathCount) {
-			lastDeathCount = *deathsResult;
+        if (deathsResult && (firstRun || *deathsResult != lastDeathCount)) {
+            lastDeathCount = *deathsResult;
             data["deaths"] = lastDeathCount;
             changed = true;
         }
 
-        if (playTimeResult && *playTimeResult != lastPlayTime) {
+        if (playTimeResult && (firstRun || *playTimeResult != lastPlayTime)) {
             lastPlayTime = *playTimeResult;
             data["playtime"] = lastPlayTime;
             changed = true;
@@ -251,9 +253,10 @@ void streamStats(DS3StatsReader& statsReader, httplib::DataSink& sink) {
                 log(LogLevel::INFO, "Client disconnected from SSE stream");
                 return;
             }
+            firstRun = false;
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::seconds(2));
     }
 }
 
@@ -332,12 +335,13 @@ void setupRoutes(httplib::Server& server, DS3StatsReader& statsReader, std::chro
         res.set_content(response.dump(), "application/json");
     });
 
-    server.Get("/api/stats/stream", [&statsReader](const httplib::Request& req, httplib::Response& res) {
+    server.Get("/api/stats/stream", [](const httplib::Request& req, httplib::Response& res) {
         res.set_header("Content-Type", "text/event-stream");
         res.set_header("Cache-Control", "no-cache");
         res.set_header("Connection", "keep-alive");
 
-        res.set_chunked_content_provider("text/event-stream", [&statsReader](size_t, httplib::DataSink& sink) {
+        res.set_chunked_content_provider("text/event-stream", [](size_t, httplib::DataSink& sink) {
+            DS3StatsReader statsReader;
             streamStats(statsReader, sink);
             return false;
         });
