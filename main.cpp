@@ -34,11 +34,14 @@ void log(LogLevel level, const std::string& message) {
 
     const char* levelStr = "INFO ";
     switch (level) {
-        case LogLevel::INFO: levelStr = "INFO "; 
+        case LogLevel::INFO:
+            levelStr = "INFO "; 
             break;
-        case LogLevel::WARN: levelStr = "WARN ";
+        case LogLevel::WARN:
+            levelStr = "WARN ";
             break;
-        case LogLevel::ERR: levelStr = "ERROR ";
+        case LogLevel::ERR:
+            levelStr = "ERROR ";
             break;
     }
 
