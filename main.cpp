@@ -37,9 +37,11 @@ void log(LogLevel level, const std::string& message) {
         case LogLevel::INFO:
             levelStr = "INFO "; 
             break;
+
         case LogLevel::WARN:
             levelStr = "WARN ";
             break;
+
         case LogLevel::ERR:
             levelStr = "ERROR ";
             break;
@@ -62,18 +64,25 @@ public:
 
     void Initialize() {
         DiscordEventHandlers handlers{};
+        
         handlers.ready = [](const DiscordUser* user) {
             log(LogLevel::INFO, "Discord connected as " + std::string(user->username));
         };
+
         handlers.disconnected = [](int errorCode, const char* message) {
             log(LogLevel::WARN, "Discord disconnected: " + std::string(message));
         };
+
         handlers.errored = [](int errorCode, const char* message) {
             log(LogLevel::ERR, "Discord error: " + std::string(message));
         };
+
         Discord_Initialize(DISCORD_APP_ID, &handlers, 1, nullptr);
+        Discord_RunCallbacks();
+        
         startTimestamp = time(nullptr);
         initialized = true;
+
         log(LogLevel::INFO, "Discord remote procedure call initialized");
     }
 
@@ -96,10 +105,13 @@ public:
         if (days > 0) {
             oss << days << "d ";
         }
+
         if (hours > 0 || days > 0) {
             oss << hours << "h ";
         }
+
         oss << minutes << "m";
+        
         stateBuffer = oss.str();
 
         DiscordRichPresence presence{};
