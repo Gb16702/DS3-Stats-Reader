@@ -5,8 +5,11 @@
 #include <windows.h>
 
 #include <chrono>
+#include <ctime>
 #include <expected>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <thread>
 
 using json = nlohmann::json;
@@ -14,6 +17,29 @@ using json = nlohmann::json;
 constexpr const char* APP_VERSION = "1.0.0";
 constexpr const char* ALLOWED_ORIGIN = "http://localhost:5173";
 constexpr int SERVER_PORT = 3000;
+
+enum class LogLevel {
+    INFO,
+    WARN,
+    ERR
+};
+
+void log(LogLevel level, const std::string& message) {
+    auto now = std::time(nullptr);
+    auto tm = *std::localtime(&now);
+
+    const char* levelStr = "INFO ";
+    switch (level) {
+        case LogLevel::INFO: levelStr = "INFO "; 
+            break;
+        case LogLevel::WARN: levelStr = "WARN ";
+            break;
+        case LogLevel::ERR: levelStr = "ERROR ";
+            break;
+    }
+
+    std::cout << std::put_time(&tm, "[%Y-%m-%d %H:%M:%S] ") << levelStr << " " << message << std::endl;
+}
 
 enum class MemoryReaderError {
     ProcessNotFound,
@@ -178,14 +204,27 @@ public:
 void streamStats(DS3StatsReader& statsReader, httplib::DataSink& sink) {
     int lastDeathCount = -1;
     int lastPlayTime = -1;
+    bool wasConnected = false;
+
+    log(LogLevel::INFO, "Client connected to SSE stream");
 
     while (true) {
         if (!statsReader.IsInitialized()) {
             auto initResult = statsReader.Initialize();
             if (!initResult) {
+                if (wasConnected) {
+                    log(LogLevel::WARN, "Game disconnected, waiting...");
+                    wasConnected = false;
+                }
+
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 continue;
             }
+        }
+
+        if (!wasConnected) {
+            log(LogLevel::INFO, "Connected to DarkSoulsIII.exe");
+            wasConnected = true;
         }
 
         auto deathsResult = statsReader.GetDeathCount();
@@ -209,6 +248,7 @@ void streamStats(DS3StatsReader& statsReader, httplib::DataSink& sink) {
         if (changed) {
             std::string event = "data: " + data.dump() + "\n\n";
             if (!sink.write(event.c_str(), event.size())) {
+                log(LogLevel::INFO, "Client disconnected from SSE stream");
                 return;
             }
         }
@@ -307,11 +347,14 @@ void setupRoutes(httplib::Server& server, DS3StatsReader& statsReader, std::chro
 int main() {
     auto startTime = std::chrono::steady_clock::now();
 
+    log(LogLevel::INFO, "Starting DS3 Stats Reader v" + std::string(APP_VERSION));
+
     DS3StatsReader statsReader;
     httplib::Server server;
 
     setupRoutes(server, statsReader, startTime);
-    std::cout << "Server running on http://localhost:" << SERVER_PORT << std::endl;
+    
+    log(LogLevel::INFO, "Server listening on http://localhost:" + std::to_string(SERVER_PORT));
     server.listen("localhost", SERVER_PORT);
 
     return 0;
