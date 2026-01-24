@@ -125,7 +125,7 @@ public:
     }
 };
 
-class DS3DeathCounter {
+class DS3StatsReader {
 private:
     MemoryReader reader;
 
@@ -175,21 +175,21 @@ public:
     }
 };
 
-void streamStats(DS3DeathCounter& counter, httplib::DataSink& sink) {
+void streamStats(DS3StatsReader& statsReader, httplib::DataSink& sink) {
     int lastDeathCount = -1;
     int lastPlayTime = -1;
 
     while (true) {
-        if (!counter.IsInitialized()) {
-            auto initResult = counter.Initialize();
+        if (!statsReader.IsInitialized()) {
+            auto initResult = statsReader.Initialize();
             if (!initResult) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 continue;
             }
         }
 
-        auto deathsResult = counter.GetDeathCount();
-        auto playTimeResult = counter.GetPlayTime();
+        auto deathsResult = statsReader.GetDeathCount();
+        auto playTimeResult = statsReader.GetPlayTime();
 
         json data;
         bool changed = false;
@@ -217,7 +217,7 @@ void streamStats(DS3DeathCounter& counter, httplib::DataSink& sink) {
     }
 }
 
-void setupRoutes(httplib::Server& server, DS3DeathCounter& counter, std::chrono::steady_clock::time_point startTime) {
+void setupRoutes(httplib::Server& server, DS3StatsReader& statsReader, std::chrono::steady_clock::time_point startTime) {
     server.set_post_routing_handler([](const httplib::Request& req, httplib::Response& res) {
         auto origin = req.get_header_value("Origin");
         if (origin == ALLOWED_ORIGIN) {
@@ -239,8 +239,8 @@ void setupRoutes(httplib::Server& server, DS3DeathCounter& counter, std::chrono:
     });
     
     server.Get("/api/stats", [&](const httplib::Request& req, httplib::Response& res) {
-        if (!counter.IsInitialized()) {
-            auto initializeResult = counter.Initialize();
+        if (!statsReader.IsInitialized()) {
+            auto initializeResult = statsReader.Initialize();
             if (!initializeResult) {
                 json response = {
                     {"success", false},
@@ -256,13 +256,13 @@ void setupRoutes(httplib::Server& server, DS3DeathCounter& counter, std::chrono:
             }
         }
 
-        auto deathsResult = counter.GetDeathCount();
-        auto playTimeResult = counter.GetPlayTime();
+        auto deathsResult = statsReader.GetDeathCount();
+        auto playTimeResult = statsReader.GetPlayTime();
 
         if (!deathsResult || !playTimeResult) {
-            if (counter.Initialize()) {
-                deathsResult = counter.GetDeathCount();
-                playTimeResult = counter.GetPlayTime();
+            if (statsReader.Initialize()) {
+                deathsResult = statsReader.GetDeathCount();
+                playTimeResult = statsReader.GetPlayTime();
             }
         }
 
@@ -292,13 +292,13 @@ void setupRoutes(httplib::Server& server, DS3DeathCounter& counter, std::chrono:
         res.set_content(response.dump(), "application/json");
     });
 
-    server.Get("/api/stats/stream", [&counter](const httplib::Request& req, httplib::Response& res) {
+    server.Get("/api/stats/stream", [&statsReader](const httplib::Request& req, httplib::Response& res) {
         res.set_header("Content-Type", "text/event-stream");
         res.set_header("Cache-Control", "no-cache");
         res.set_header("Connection", "keep-alive");
 
-        res.set_chunked_content_provider("text/event-stream", [&counter](size_t, httplib::DataSink& sink) {
-            streamStats(counter, sink);
+        res.set_chunked_content_provider("text/event-stream", [&statsReader](size_t, httplib::DataSink& sink) {
+            streamStats(statsReader, sink);
             return false;
         });
     });
@@ -307,10 +307,10 @@ void setupRoutes(httplib::Server& server, DS3DeathCounter& counter, std::chrono:
 int main() {
     auto startTime = std::chrono::steady_clock::now();
 
-    DS3DeathCounter counter;
+    DS3StatsReader statsReader;
     httplib::Server server;
 
-    setupRoutes(server, counter, startTime);
+    setupRoutes(server, statsReader, startTime);
     std::cout << "Server running on http://localhost:" << SERVER_PORT << std::endl;
     server.listen("localhost", SERVER_PORT);
 
