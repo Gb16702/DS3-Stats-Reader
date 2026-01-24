@@ -1,9 +1,11 @@
+#include "discord_rpc.h"
 #include "httplib.h"
 #include "json.hpp"
 
 #include <tlhelp32.h>
 #include <windows.h>
 
+#include <atomic>
 #include <chrono>
 #include <ctime>
 #include <expected>
@@ -17,6 +19,7 @@ using json = nlohmann::json;
 constexpr const char* APP_VERSION = "1.0.0";
 constexpr const char* ALLOWED_ORIGIN = "http://localhost:5173";
 constexpr int SERVER_PORT = 3000;
+constexpr const char* DISCORD_APP_ID = "1464534094405832923";
 
 enum class LogLevel {
     INFO,
@@ -41,6 +44,85 @@ void log(LogLevel level, const std::string& message) {
 
     std::cout << std::put_time(&tm, "[%Y-%m-%d %H:%M:%S] ") << levelStr << " " << message << std::endl;
 }
+
+class DiscordPresence {
+private:
+    std::atomic<bool> initialized = false;
+    int64_t startTimestamp = 0;
+    std::string detailsBuffer;
+    std::string stateBuffer;
+
+public:
+    DiscordPresence() = default;
+    DiscordPresence(const DiscordPresence&) = delete;
+    DiscordPresence& operator=(const DiscordPresence&) = delete;
+
+    void Initialize() {
+        DiscordEventHandlers handlers{};
+        handlers.ready = [](const DiscordUser* user) {
+            log(LogLevel::INFO, "Discord connected as " + std::string(user->username));
+        };
+        handlers.disconnected = [](int errorCode, const char* message) {
+            log(LogLevel::WARN, "Discord disconnected: " + std::string(message));
+        };
+        handlers.errored = [](int errorCode, const char* message) {
+            log(LogLevel::ERR, "Discord error: " + std::string(message));
+        };
+        Discord_Initialize(DISCORD_APP_ID, &handlers, 1, nullptr);
+        startTimestamp = time(nullptr);
+        initialized = true;
+        log(LogLevel::INFO, "Discord RPC initialized");
+    }
+
+    void Update(uint32_t deaths, uint32_t playtimeMs) {
+        if (!initialized) return;
+
+        uint32_t playtimeMinutes = playtimeMs / 1000 / 60;
+        uint32_t days = playtimeMinutes / 1440;
+        uint32_t hours = (playtimeMinutes % 1440) / 60;
+        uint32_t minutes = playtimeMinutes % 60;
+
+        if (deaths == 0) {
+            detailsBuffer = "No deaths yet";
+        } else {
+            detailsBuffer = "Died " + std::to_string(deaths) + (deaths == 1 ? " time" : " times");
+        }
+
+        std::ostringstream oss;
+        oss << "Current run: ";
+        if (days > 0) {
+            oss << days << "d ";
+        }
+        if (hours > 0 || days > 0) {
+            oss << hours << "h ";
+        }
+        oss << minutes << "m";
+        stateBuffer = oss.str();
+
+        DiscordRichPresence presence{};
+        presence.details = detailsBuffer.c_str();
+        presence.state = stateBuffer.c_str();
+        presence.largeImageKey = "ds3_logo";
+        presence.startTimestamp = startTimestamp;
+
+        Discord_UpdatePresence(&presence);
+    }
+
+    void Shutdown() {
+        if (initialized) {
+            Discord_Shutdown();
+            initialized = false;
+            log(LogLevel::INFO, "Discord RPC shutdown");
+        }
+    }
+
+    ~DiscordPresence() {
+        Shutdown();
+    }
+};
+
+DiscordPresence g_discord;
+std::atomic<bool> g_running = true;
 
 enum class MemoryReaderError {
     ProcessNotFound,
@@ -202,6 +284,52 @@ public:
     }
 };
 
+void discordUpdateLoop() {
+    DS3StatsReader statsReader;
+    bool gameConnected = false;
+    uint32_t currentDeaths = 0;
+    uint32_t currentPlaytime = 0;
+    int minutesSinceSync = 5;
+
+    while (g_running) {
+        if (!statsReader.IsInitialized()) {
+            if (statsReader.Initialize()) {
+                gameConnected = true;
+                log(LogLevel::INFO, "Game detected, starting Discord presence");
+                minutesSinceSync = 5;
+            } else {
+                if (gameConnected) {
+                    log(LogLevel::WARN, "Game disconnected");
+                    Discord_ClearPresence();
+                    gameConnected = false;
+                }
+                Discord_RunCallbacks();
+                std::this_thread::sleep_for(std::chrono::minutes(1));
+                continue;
+            }
+        }
+
+        if (minutesSinceSync >= 5) {
+            auto deathsResult = statsReader.GetDeathCount();
+            auto playTimeResult = statsReader.GetPlayTime();
+
+            if (deathsResult && playTimeResult) {
+                currentDeaths = *deathsResult;
+                currentPlaytime = *playTimeResult;
+            }
+            minutesSinceSync = 0;
+        }
+
+        g_discord.Update(currentDeaths, currentPlaytime);
+
+        currentPlaytime += 60000;
+        minutesSinceSync++;
+
+        Discord_RunCallbacks();
+        std::this_thread::sleep_for(std::chrono::minutes(1));
+    }
+}
+
 void streamStats(DS3StatsReader& statsReader, httplib::DataSink& sink) {
     uint32_t lastDeathCount = 0;
     uint32_t lastPlayTime = 0;
@@ -353,13 +481,22 @@ int main() {
 
     log(LogLevel::INFO, "Starting DS3 Stats Reader v" + std::string(APP_VERSION));
 
+    g_discord.Initialize();
+
+    std::thread discordThread(discordUpdateLoop);
+
     DS3StatsReader statsReader;
     httplib::Server server;
 
     setupRoutes(server, statsReader, startTime);
-    
+
     log(LogLevel::INFO, "Server listening on http://localhost:" + std::to_string(SERVER_PORT));
     server.listen("localhost", SERVER_PORT);
+
+    g_running = false;
+    discordThread.join();
+
+    g_discord.Shutdown();
 
     return 0;
 }
