@@ -788,9 +788,14 @@ int main() {
     log(LogLevel::INFO, "Starting DS3 Stats Reader v" + std::string(APP_VERSION));
 
     g_settings.LoadSettings();
+    if (g_settings.isBorderlessFullscreenEnabled) {
+		g_borderlessWindow.Enable();
+    }
+
     if (g_settings.isAutoStartEnabled) {
         AutoStart::Enable();
     }
+
 
     std::thread discordThread(discordUpdateLoop);
 
