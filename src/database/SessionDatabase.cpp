@@ -94,6 +94,72 @@ bool SessionDatabase::SaveSession(const std::string& startTime, const std::strin
     return true;
 }
 
+bool SessionDatabase::UpdatePlayerStats(int totalDeaths, int totalPlaytimeMs) {
+    const char* sql = R"(
+        INSERT OR REPLACE INTO player_stats(id, total_deaths, total_playtime_ms, last_updated)
+        values (1, ?, ?, ?)    
+    )";
+
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        log(LogLevel::ERR, "Failed to prepare UpdatePlayerStats");
+        return false;
+    }
+
+    std::string timestamp = Stats::GetCurrentTimestamp();
+
+    sqlite3_bind_int(stmt, 1, totalDeaths);
+    sqlite3_bind_int(stmt, 2, totalPlaytimeMs);
+    sqlite3_bind_text(stmt, 3, timestamp.c_str(), -1, SQLITE_TRANSIENT);
+
+    int result = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    return result == SQLITE_DONE;
+}
+
+std::vector<Session> SessionDatabase::GetAllSessions() {
+    std::vector<Session> sessions;
+
+    const char* sql = R"(
+          SELECT id, start_time, end_time, duration_ms, starting_deaths, ending_deaths, session_deaths, deaths_per_hour
+          FROM sessions
+          ORDER BY id DESC
+      )";
+
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        log(LogLevel::ERR, "Failed to prepare GetAllSessions");
+        return sessions;
+    }
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        Session session;
+        session.id = sqlite3_column_int(stmt, 0);
+
+        const unsigned char* startText = sqlite3_column_text(stmt, 1);
+        if (startText) {
+            session.startTime = reinterpret_cast<const char*>(startText);
+        }
+
+        const unsigned char* endText = sqlite3_column_text(stmt, 2);
+        if (endText) {
+            session.endTime = reinterpret_cast<const char*>(endText);
+        }
+
+        session.durationMs = sqlite3_column_int(stmt, 3);
+        session.startingDeaths = sqlite3_column_int(stmt, 4);
+        session.endingDeaths = sqlite3_column_int(stmt, 5);
+        session.sessionDeaths = sqlite3_column_int(stmt, 6);
+        session.deathsPerHour = sqlite3_column_double(stmt, 7);
+
+        sessions.push_back(session);
+    }
+
+    sqlite3_finalize(stmt);
+    return sessions;
+}
+
 void SessionDatabase::Close() {
     if (db) {
         sqlite3_close_v2(db);

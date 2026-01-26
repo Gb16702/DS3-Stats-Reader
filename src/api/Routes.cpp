@@ -5,6 +5,7 @@
 #include "../discord/DiscordLoop.h"
 #include "../windows/AutoStart.h"
 #include "../windows/BorderlessWindow.h"
+#include "../database/SessionDatabase.h"
 
 #include "json.hpp"
 
@@ -100,6 +101,31 @@ void setupRoutes(httplib::Server& server, DS3StatsReader& statsReader, std::chro
             res.status = httplib::StatusCode::BadRequest_400;
             res.set_content(response.dump(), "application/json");
         }
+    });
+
+    server.Get("/api/sessions", [](const httplib::Request& req, httplib::Response& res) {
+        auto sessions = g_sessionDb.GetAllSessions();
+
+        json sessionsArray = json::array();
+        for (const auto& session : sessions) {
+            sessionsArray.push_back({
+                {"id", session.id},
+                {"startTime", session.startTime},
+                {"endTime", session.endTime},
+                {"durationMs", session.durationMs},
+                {"startingDeaths", session.startingDeaths},
+                {"endingDeaths", session.endingDeaths},
+                {"sessionDeaths", session.sessionDeaths},
+                {"deathsPerHour", session.deathsPerHour}
+            });
+        }
+
+        json response = {
+            {"success", true},
+            {"data", sessionsArray}
+        };
+
+        res.set_content(response.dump(), "application/json");
     });
 
     server.Get("/api/stats", [&](const httplib::Request& req, httplib::Response& res) {
