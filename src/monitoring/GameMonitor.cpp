@@ -10,6 +10,7 @@
 std::string g_sessionStartTime;
 int g_startingDeaths = -1;
 int g_lastKnownDeaths = 0;
+int g_lastKnownPlaytime = 0;
 std::atomic<bool> g_sessionActive = false;
 std::atomic<bool> g_running = true;
 
@@ -39,12 +40,15 @@ void gameMonitorLoop() {
             if (!g_sessionActive && *playtimeResult > 0) {
                 g_sessionStartTime = Stats::GetCurrentTimestamp();
                 g_startingDeaths = *deathsResult;
+                g_lastKnownDeaths = *deathsResult;
+                g_lastKnownPlaytime = *playtimeResult;
                 g_sessionActive = true;
                 sessionStartPoint = std::chrono::steady_clock::now();
                 log(LogLevel::INFO, "Session started with " + std::to_string(g_startingDeaths) + " deaths");
             }
-            if (g_sessionActive) {
+            if (g_sessionActive && *playtimeResult > 0) {
                 g_lastKnownDeaths = *deathsResult;
+                g_lastKnownPlaytime = *playtimeResult;
             }
         } else {
             auto reinitResult = statsReader.Initialize();
@@ -64,6 +68,8 @@ void gameMonitorLoop() {
                         g_startingDeaths,
                         g_lastKnownDeaths
                     );
+
+                    g_sessionDb.UpdatePlayerStats(g_lastKnownDeaths, g_lastKnownPlaytime);
 
                     g_sessionActive = false;
                     g_startingDeaths = -1;

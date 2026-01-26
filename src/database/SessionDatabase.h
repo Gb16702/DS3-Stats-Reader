@@ -2,6 +2,7 @@
 
 #include "sqlite3.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -14,6 +15,12 @@ struct Session {
     int endingDeaths;
     int sessionDeaths;
     double deathsPerHour;
+};
+
+struct PlayerStats {
+    int totalDeaths;
+    int totalPlaytimeMs;
+    std::string lastUpdated;
 };
 
 class SessionDatabase {
@@ -34,6 +41,7 @@ public:
     bool Open();
     bool SaveSession(const std::string& startTime, const std::string& endTime, int durationMs, int startingDeaths, int endingDeaths);
     bool UpdatePlayerStats(int totalDeaths, int totalPlaytimeMs);
+    std::optional<PlayerStats> GetPlayerStats();
     std::vector<Session> GetAllSessions();
     void Close();
 };

@@ -118,6 +118,33 @@ bool SessionDatabase::UpdatePlayerStats(int totalDeaths, int totalPlaytimeMs) {
     return result == SQLITE_DONE;
 }
 
+std::optional<PlayerStats> SessionDatabase::GetPlayerStats() {
+    const char* sql = "SELECT total_deaths, total_playtime_ms, last_updated FROM player_stats WHERE id = 1";
+
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        log(LogLevel::ERR, "Failed to prepare GetPlayerStats");
+        return std::nullopt;
+    }
+
+    if (sqlite3_step(stmt) != SQLITE_ROW) {
+        sqlite3_finalize(stmt);
+        return std::nullopt;
+    }
+
+    PlayerStats stats;
+    stats.totalDeaths = sqlite3_column_int(stmt, 0);
+    stats.totalPlaytimeMs = sqlite3_column_int(stmt, 1);
+
+    const unsigned char* lastUpdatedText = sqlite3_column_text(stmt, 2);
+    if (lastUpdatedText) {
+        stats.lastUpdated = reinterpret_cast<const char*>(lastUpdatedText);
+    }
+
+    sqlite3_finalize(stmt);
+    return stats;
+}
+
 std::vector<Session> SessionDatabase::GetAllSessions() {
     std::vector<Session> sessions;
 

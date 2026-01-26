@@ -130,55 +130,51 @@ void setupRoutes(httplib::Server& server, DS3StatsReader& statsReader, std::chro
 
     server.Get("/api/stats", [&](const httplib::Request& req, httplib::Response& res) {
         if (!statsReader.IsInitialized()) {
-            auto initializeResult = statsReader.Initialize();
-            if (!initializeResult) {
-                json response = {
-                    {"success", false},
-                    {"error", {
-                        {"code", "GAME_NOT_RUNNING"},
-                        {"message", "Make sure Dark Souls III is running"}
-                    }}
-                };
-
-                res.status = httplib::StatusCode::ServiceUnavailable_503;
-                res.set_content(response.dump(), "application/json");
-                return;
-            }
+            statsReader.Initialize();
         }
 
         auto deathsResult = statsReader.GetDeathCount();
         auto playTimeResult = statsReader.GetPlayTime();
 
         if (!deathsResult || !playTimeResult) {
-            if (statsReader.Initialize()) {
-                deathsResult = statsReader.GetDeathCount();
-                playTimeResult = statsReader.GetPlayTime();
-            }
+            statsReader.Initialize();
+            deathsResult = statsReader.GetDeathCount();
+            playTimeResult = statsReader.GetPlayTime();
         }
 
-        if (!deathsResult || !playTimeResult) {
+        if (deathsResult && playTimeResult && *playTimeResult > 0) {
             json response = {
-                {"success", false},
-                {"error", {
-                    {"code", "READ_FAILED"},
-                    {"message", "Could not read game data"}
+                {"success", true},
+                {"data", {
+                    {"deaths", *deathsResult},
+                    {"playtime", *playTimeResult}
                 }}
             };
-
-            res.status = httplib::StatusCode::InternalServerError_500;
             res.set_content(response.dump(), "application/json");
             return;
         }
 
+        auto cachedStats = g_sessionDb.GetPlayerStats();
+        if (cachedStats) {
+            json response = {
+                {"success", true},
+                {"data", {
+                    {"deaths", cachedStats->totalDeaths},
+                    {"playtime", cachedStats->totalPlaytimeMs}
+                }}
+            };
+            res.set_content(response.dump(), "application/json");
+            return;
+        }
 
         json response = {
-            {"success", true},
-            {"data", {
-                {"deaths", *deathsResult},
-                {"playtime", *playTimeResult}
+            {"success", false},
+            {"error", {
+                {"code", "NO_DATA"},
+                {"message", "No stats available. Play the game at least once."}
             }}
         };
-
+        res.status = httplib::StatusCode::ServiceUnavailable_503;
         res.set_content(response.dump(), "application/json");
     });
 
