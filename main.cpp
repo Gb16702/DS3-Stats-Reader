@@ -1,6 +1,7 @@
 #include "discord_rpc.h"
 #include "httplib.h"
 #include "json.hpp"
+#include "sqlite3.h"
 
 #include <tlhelp32.h>
 #include <windows.h>
@@ -52,6 +53,27 @@ void log(LogLevel level, const std::string& message) {
     }
 
     std::osyncstream(std::cout) << std::put_time(&tm, "[%Y-%m-%d %H:%M:%S] ") << levelStr << message << std::endl;
+}
+
+namespace Stats {
+    std::string GetCurrentTimestamp() {
+        std::time_t now = std::time(nullptr);
+        std::tm tm{};
+        localtime_s(&tm, &now);
+
+        std::ostringstream oss;
+        oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+        return oss.str();
+    }
+
+    double CalculateDeathsPerHour(int deaths, int durationMs) {
+        if (durationMs <= 0) {
+            return 0.0;
+        }
+
+        double hours = durationMs / 3600000.0;
+        return deaths / hours;
+    }
 }
 
 struct Settings {
@@ -253,6 +275,128 @@ public:
         return true;
     }
 };
+
+class SessionDatabase {
+private:
+	sqlite3* db = nullptr;
+    static constexpr const char* DB_FILE = "sessions.db";
+
+    bool CreateTables() {
+        const char* sessionsSql = R"(
+            CREATE TABLE IF NOT EXISTS sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                start_time TEXT,
+                end_time TEXT,
+                duration_ms INTEGER,
+                starting_deaths INTEGER,
+                ending_deaths INTEGER,
+                session_deaths INTEGER,
+                deaths_per_hour REAL
+            )
+        )";
+
+        const char* playerStatsSql = R"(
+            CREATE TABLE IF NOT EXISTS player_stats (
+                id INTEGER PRIMARY KEY,
+                total_deaths INTEGER,
+                total_playtime_ms INTEGER,
+                last_updated TEXT
+            )
+        )";
+
+        char* errMsg = nullptr;
+
+        if (sqlite3_exec(db, sessionsSql, nullptr, nullptr, &errMsg) != SQLITE_OK) {
+            log(LogLevel::ERR, "Failed to create sessions table: " + std::string(errMsg));
+            sqlite3_free(errMsg);
+            return false;
+        }
+
+        if (sqlite3_exec(db, playerStatsSql, nullptr, nullptr, &errMsg) != SQLITE_OK) {
+            log(LogLevel::ERR, "Failed to create player_stats table: " + std::string(errMsg));
+            sqlite3_free(errMsg);
+            return false;
+        }
+
+        return true;
+    }
+
+public:
+    SessionDatabase() = default;
+
+    SessionDatabase(const SessionDatabase&) = delete;
+    SessionDatabase& operator=(const SessionDatabase&) = delete;
+
+    bool Open() {
+        int result = sqlite3_open(DB_FILE, &db);
+        if (result != SQLITE_OK) {
+            log(LogLevel::ERR, "Failed to open database: " + std::string(sqlite3_errmsg(db)));
+            return false;
+        }
+
+        if (!CreateTables()) {
+            return false;
+        }
+
+        log(LogLevel::INFO, "Database opened");
+        return true;
+    }
+
+    bool SaveSession(const std::string& startTime, const std::string& endTime, int durationMs, int startingDeaths, int endingDeaths) {
+        int sessionDeaths = endingDeaths - startingDeaths;
+        double deathsPerHour = Stats::CalculateDeathsPerHour(sessionDeaths, durationMs);
+
+        const char* sql = R"(
+            INSERT INTO sessions(start_time, end_time, duration_ms, starting_deaths, ending_deaths, session_deaths, deaths_per_hour)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        )";
+
+        sqlite3_stmt* stmt;
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+            log(LogLevel::ERR, "Failed to prepare statement");
+            return false;
+        }
+
+        sqlite3_bind_text(stmt, 1, startTime.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 2, endTime.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmt, 3, durationMs);
+        sqlite3_bind_int(stmt, 4, startingDeaths);
+        sqlite3_bind_int(stmt, 5, endingDeaths);
+        sqlite3_bind_int(stmt, 6, sessionDeaths);
+        sqlite3_bind_double(stmt, 7, deathsPerHour);
+
+        int result = sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+
+        if (result != SQLITE_DONE) {
+            log(LogLevel::ERR, "Failed to save session");
+            return false;
+        }
+
+        log(LogLevel::INFO, "Session saved: " + std::to_string(sessionDeaths) + " deaths");
+        return true;
+    }
+
+    void Close() {
+        if (db) {
+            sqlite3_close_v2(db);
+            db = nullptr;
+            log(LogLevel::INFO, "Session database closed");
+        }
+    }
+
+    ~SessionDatabase() {
+        Close();
+    }
+
+};
+
+SessionDatabase g_sessionDb;
+
+std::string g_sessionStartTime;
+int g_startingDeaths = -1;
+int g_lastKnownDeaths = 0;
+std::atomic<bool> g_sessionActive = false;
 
 class DiscordPresence {
 private:
@@ -595,6 +739,16 @@ void streamStats(DS3StatsReader& statsReader, httplib::DataSink& sink) {
         auto deathsResult = statsReader.GetDeathCount();
         auto playTimeResult = statsReader.GetPlayTime();
 
+        if (deathsResult) {
+            if (!g_sessionActive) {
+                g_sessionStartTime = Stats::GetCurrentTimestamp();
+                g_startingDeaths = *deathsResult;
+                g_sessionActive = true;
+                log(LogLevel::INFO, "Session started with " + std::to_string(g_startingDeaths) + " deaths");
+            }
+            g_lastKnownDeaths = *deathsResult;
+        }
+
         json data;
         bool changed = false;
 
@@ -788,6 +942,8 @@ int main() {
     log(LogLevel::INFO, "Starting DS3 Stats Reader v" + std::string(APP_VERSION));
 
     g_settings.LoadSettings();
+    g_sessionDb.Open();
+
     if (g_settings.isBorderlessFullscreenEnabled) {
 		g_borderlessWindow.Enable();
     }
@@ -812,6 +968,22 @@ int main() {
     discordThread.join();
 
     g_discord.Shutdown();
+
+    if (g_sessionActive) {
+        auto endTime = std::chrono::steady_clock::now();
+        auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+        std::string endTimestamp = Stats::GetCurrentTimestamp();
+
+        g_sessionDb.SaveSession(
+            g_sessionStartTime,
+            endTimestamp,
+            static_cast<int>(durationMs),
+            g_startingDeaths,
+            g_lastKnownDeaths
+        );
+    }
+
+    g_sessionDb.Close();
 
     return 0;
 }
