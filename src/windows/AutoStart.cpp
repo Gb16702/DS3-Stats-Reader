@@ -1,6 +1,7 @@
 #include "AutoStart.h"
 #include "../core/Log.h"
 
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
 bool AutoStart::Enable() {
