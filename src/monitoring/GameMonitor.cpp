@@ -1,6 +1,7 @@
 #include "GameMonitor.h"
 #include "../core/Log.h"
 #include "../core/Stats.h"
+#include "../core/ZoneNames.h"
 #include "../database/SessionDatabase.h"
 #include "../memory/DS3StatsReader.h"
 
@@ -18,6 +19,9 @@ void gameMonitorLoop() {
     DS3StatsReader statsReader;
     bool wasConnected = false;
     auto sessionStartPoint = std::chrono::steady_clock::now();
+
+    bool wasInBossFight = false;
+    bool deathRecorded = false;
 
     while (g_running) {
         if (!statsReader.IsInitialized()) {
@@ -50,6 +54,41 @@ void gameMonitorLoop() {
                 g_lastKnownDeaths = *deathsResult;
                 g_lastKnownPlaytime = *playtimeResult;
             }
+
+            bool inBossFight = false;
+            uint32_t currentZoneId = 0;
+            int32_t playerHP = 1;
+
+            auto bossFightResult = statsReader.GetInBossFight();
+            if (bossFightResult) {
+                inBossFight = *bossFightResult;
+            }
+
+            auto zoneResult = statsReader.GetPlayRegion();
+            if (zoneResult) {
+                currentZoneId = *zoneResult;
+            }
+
+            auto hpResult = statsReader.GetPlayerHP();
+            if (hpResult) {
+                playerHP = *hpResult;
+            }
+
+            if (inBossFight && !wasInBossFight) {
+                log(LogLevel::INFO, "Entered boss fight: " + GetZoneName(currentZoneId));
+            }
+
+            if (playerHP <= 0 && !deathRecorded && currentZoneId != 0) {
+                std::string zoneName = GetZoneName(currentZoneId);
+                g_sessionDb.SaveDeath(currentZoneId, zoneName, inBossFight);
+                deathRecorded = true;
+            }
+
+            if (playerHP > 0 && deathRecorded) {
+                deathRecorded = false;
+            }
+
+            wasInBossFight = inBossFight;
         } else {
             auto reinitResult = statsReader.Initialize();
 

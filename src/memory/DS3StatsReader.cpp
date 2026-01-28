@@ -82,3 +82,34 @@ std::expected<bool, MemoryReaderError> DS3StatsReader::GetInBossFight() {
     }
     return *result != 0;
 }
+
+std::expected<int32_t, MemoryReaderError> DS3StatsReader::GetPlayerHP() {
+    uintptr_t pointerAddress = reader.GetModuleBase() + WORLDCHRMAN_POINTER;
+
+    uintptr_t worldChrMan = 0;
+    if (!reader.ReadMemory(pointerAddress, worldChrMan) || worldChrMan == 0) {
+        return std::unexpected(MemoryReaderError::ReadFailed);
+    }
+
+    uintptr_t playerPtr = 0;
+    if (!reader.ReadMemory(worldChrMan + WORLDCHRMAN_PLAYER_OFFSET, playerPtr) || playerPtr == 0) {
+        return std::unexpected(MemoryReaderError::ReadFailed);
+    }
+
+    uintptr_t playerData = 0;
+    if (!reader.ReadMemory(playerPtr + PLAYER_DATA_OFFSET, playerData) || playerData == 0) {
+        return std::unexpected(MemoryReaderError::ReadFailed);
+    }
+
+    uintptr_t hpStruct = 0;
+    if (!reader.ReadMemory(playerData + PLAYER_HP_STRUCT_OFFSET, hpStruct) || hpStruct == 0) {
+        return std::unexpected(MemoryReaderError::ReadFailed);
+    }
+
+    int32_t hp = 0;
+    if (!reader.ReadMemory(hpStruct + PLAYER_HP_OFFSET, hp)) {
+        return std::unexpected(MemoryReaderError::ReadFailed);
+    }
+
+    return hp;
+}

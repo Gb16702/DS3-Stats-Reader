@@ -20,6 +20,10 @@ private:
 
     static constexpr uintptr_t BOSS_FIGHT_OFFSET = 0xC0;
 
+    static constexpr uintptr_t PLAYER_DATA_OFFSET = 0x1F90;
+    static constexpr uintptr_t PLAYER_HP_STRUCT_OFFSET = 0x18;
+    static constexpr uintptr_t PLAYER_HP_OFFSET = 0xD8;
+
     static constexpr wchar_t PROCESS_NAME[] = L"DarkSoulsIII.exe";
 
     std::expected<uint32_t, MemoryReaderError> ReadGameData(uintptr_t basePointer, uintptr_t offset);
@@ -33,4 +37,5 @@ public:
     std::expected<uint32_t, MemoryReaderError> GetCurrentZone();
     std::expected<uint32_t, MemoryReaderError> GetPlayRegion();
     std::expected<bool, MemoryReaderError> GetInBossFight();
+    std::expected<int32_t, MemoryReaderError> GetPlayerHP();
 };
