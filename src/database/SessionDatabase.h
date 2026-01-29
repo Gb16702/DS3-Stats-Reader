@@ -32,6 +32,7 @@ struct Death {
     std::string zoneName;
     int characterId;
     std::string timestamp;
+    bool isBossDeath;
 };
 
 struct Character {
@@ -76,7 +77,7 @@ public:
     bool UpdatePlayerStats(int totalDeaths, int totalPlaytimeMs);
     std::optional<PlayerStats> GetPlayerStats();
     std::vector<Session> GetAllSessions();
-    bool SaveDeath(uint32_t zoneId, const std::string& zoneName, int characterId);
+    bool SaveDeath(uint32_t zoneId, const std::string& zoneName, int characterId, bool isBossDeath);
     std::vector<Death> GetAllDeaths();
     std::vector<Death> GetDeathsByCharacter(int characterId);
     std::map<std::string, int> GetDeathCountByZone();

@@ -157,7 +157,7 @@ void gameMonitorLoop() {
 
             if (playerHP <= 0 && !deathRecorded && currentZoneId != 0 && g_currentCharacterId > 0) {
                 std::string zoneName = GetZoneName(currentZoneId);
-                g_sessionDb.SaveDeath(currentZoneId, zoneName, g_currentCharacterId);
+                g_sessionDb.SaveDeath(currentZoneId, zoneName, g_currentCharacterId, inBossFight);
                 deathRecorded = true;
             }
 

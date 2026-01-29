@@ -46,6 +46,7 @@ bool SessionDatabase::CreateTables() {
             zone_name TEXT,
             character_id INTEGER,
             timestamp TEXT,
+            is_boss_death INTEGER DEFAULT 0,
             FOREIGN KEY (character_id) REFERENCES characters(id)
         )
     )";
@@ -245,10 +246,10 @@ std::vector<Session> SessionDatabase::GetAllSessions() {
     return sessions;
 }
 
-bool SessionDatabase::SaveDeath(uint32_t zoneId, const std::string& zoneName, int characterId) {
+bool SessionDatabase::SaveDeath(uint32_t zoneId, const std::string& zoneName, int characterId, bool isBossDeath) {
     const char* sql = R"(
-        INSERT INTO deaths(zone_id, zone_name, character_id, timestamp)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO deaths(zone_id, zone_name, character_id, timestamp, is_boss_death)
+        VALUES (?, ?, ?, ?, ?)
     )";
 
     sqlite3_stmt* stmt;
@@ -263,6 +264,7 @@ bool SessionDatabase::SaveDeath(uint32_t zoneId, const std::string& zoneName, in
     sqlite3_bind_text(stmt, 2, zoneName.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 3, characterId);
     sqlite3_bind_text(stmt, 4, timestamp.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 5, isBossDeath ? 1 : 0);
 
     int result = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -272,7 +274,7 @@ bool SessionDatabase::SaveDeath(uint32_t zoneId, const std::string& zoneName, in
         return false;
     }
 
-    log(LogLevel::INFO, "Death saved: " + zoneName);
+    log(LogLevel::INFO, "Death saved: " + zoneName + (isBossDeath ? " (boss)" : ""));
     return true;
 }
 
@@ -280,7 +282,7 @@ std::vector<Death> SessionDatabase::GetAllDeaths() {
     std::vector<Death> deaths;
 
     const char* sql = R"(
-        SELECT id, zone_id, zone_name, character_id, timestamp
+        SELECT id, zone_id, zone_name, character_id, timestamp, is_boss_death
         FROM deaths
         ORDER BY id DESC
     )";
@@ -308,6 +310,8 @@ std::vector<Death> SessionDatabase::GetAllDeaths() {
             death.timestamp = reinterpret_cast<const char*>(timestampText);
         }
 
+        death.isBossDeath = sqlite3_column_int(stmt, 5) != 0;
+
         deaths.push_back(death);
     }
 
@@ -319,7 +323,7 @@ std::vector<Death> SessionDatabase::GetDeathsByCharacter(int characterId) {
     std::vector<Death> deaths;
 
     const char* sql = R"(
-        SELECT id, zone_id, zone_name, character_id, timestamp
+        SELECT id, zone_id, zone_name, character_id, timestamp, is_boss_death
         FROM deaths
         WHERE character_id = ?
         ORDER BY id DESC
@@ -349,6 +353,8 @@ std::vector<Death> SessionDatabase::GetDeathsByCharacter(int characterId) {
         if (timestampText) {
             death.timestamp = reinterpret_cast<const char*>(timestampText);
         }
+
+        death.isBossDeath = sqlite3_column_int(stmt, 5) != 0;
 
         deaths.push_back(death);
     }
