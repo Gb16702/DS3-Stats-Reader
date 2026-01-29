@@ -6,6 +6,19 @@
 #include <cstdint>
 #include <string>
 
+struct CharacterStats {
+    uint32_t level;
+    uint32_t vigor;
+    uint32_t attunement;
+    uint32_t endurance;
+	uint32_t vitality;
+    uint32_t strength;
+    uint32_t dexterity;
+    uint32_t intelligence;
+    uint32_t faith;
+	uint32_t luck;
+};
+
 class DS3StatsReader {
 private:
     MemoryReader reader;
@@ -30,6 +43,16 @@ private:
     static constexpr uintptr_t CHARACTER_LEVEL_OFFSET = 0x70;
     static constexpr uintptr_t CHARACTER_CLASS_OFFSET = 0xAE;
 
+	static constexpr uintptr_t STAT_VIGOR_OFFSET = 0x44;
+    static constexpr uintptr_t STAT_ATTUNEMENT_OFFSET = 0x48;
+    static constexpr uintptr_t STAT_ENDURANCE_OFFSET = 0x4C;
+    static constexpr uintptr_t STAT_VITALITY_OFFSET = 0x6C;
+    static constexpr uintptr_t STAT_STRENGTH_OFFSET = 0x50;
+    static constexpr uintptr_t STAT_DEXTERITY_OFFSET = 0x54;
+    static constexpr uintptr_t STAT_INTELLIGENCE_OFFSET = 0x58;
+    static constexpr uintptr_t STAT_FAITH_OFFSET = 0x5C;
+    static constexpr uintptr_t STAT_LUCK_OFFSET = 0x60;
+
     static constexpr wchar_t PROCESS_NAME[] = L"DarkSoulsIII.exe";
 
     std::expected<uint32_t, MemoryReaderError> ReadGameData(uintptr_t basePointer, uintptr_t offset);
@@ -47,6 +70,6 @@ public:
     std::expected<int32_t, MemoryReaderError> GetPlayerHP();
 
     std::expected<std::wstring, MemoryReaderError> GetCharacterName();
-    std::expected<uint32_t, MemoryReaderError> GetSoulLevel();
     std::expected<uint8_t, MemoryReaderError> GetClass();
+	std::expected<CharacterStats, MemoryReaderError> GetCharacterStats();
 };

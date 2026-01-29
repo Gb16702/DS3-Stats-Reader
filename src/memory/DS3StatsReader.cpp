@@ -144,20 +144,6 @@ std::expected<std::wstring, MemoryReaderError> DS3StatsReader::GetCharacterName(
     return std::wstring(nameBuffer);
 }
 
-std::expected<uint32_t, MemoryReaderError> DS3StatsReader::GetSoulLevel() {
-    auto baseResult = GetCharacterDataBase();
-    if (!baseResult) {
-        return std::unexpected(baseResult.error());
-    }
-
-    uint32_t level = 0;
-    if (!reader.ReadMemory(*baseResult + CHARACTER_LEVEL_OFFSET, level)) {
-        return std::unexpected(MemoryReaderError::ReadFailed);
-    }
-
-    return level;
-}
-
 std::expected<uint8_t, MemoryReaderError> DS3StatsReader::GetClass() {
     auto baseResult = GetCharacterDataBase();
     if (!baseResult) {
@@ -170,4 +156,29 @@ std::expected<uint8_t, MemoryReaderError> DS3StatsReader::GetClass() {
     }
 
     return classId;
+}
+
+std::expected<CharacterStats, MemoryReaderError> DS3StatsReader::GetCharacterStats() {
+	auto baseResult = GetCharacterDataBase();
+    if (!baseResult) {
+        return std::unexpected(baseResult.error());
+	}
+
+	uintptr_t base = *baseResult;
+    CharacterStats statsRecord{};
+
+    if (!reader.ReadMemory(base + CHARACTER_LEVEL_OFFSET, statsRecord.level) ||
+        !reader.ReadMemory(base + STAT_VIGOR_OFFSET, statsRecord.vigor) ||
+        !reader.ReadMemory(base + STAT_ATTUNEMENT_OFFSET, statsRecord.attunement) ||
+        !reader.ReadMemory(base + STAT_ENDURANCE_OFFSET, statsRecord.endurance) ||
+        !reader.ReadMemory(base + STAT_VITALITY_OFFSET, statsRecord.vitality) ||
+        !reader.ReadMemory(base + STAT_STRENGTH_OFFSET, statsRecord.strength) ||
+        !reader.ReadMemory(base + STAT_DEXTERITY_OFFSET, statsRecord.dexterity) ||
+        !reader.ReadMemory(base + STAT_INTELLIGENCE_OFFSET, statsRecord.intelligence) ||
+        !reader.ReadMemory(base + STAT_FAITH_OFFSET, statsRecord.faith) ||
+        !reader.ReadMemory(base + STAT_LUCK_OFFSET, statsRecord.luck)) {
+        return std::unexpected(MemoryReaderError::ReadFailed);
+    }
+
+    return statsRecord;
 }

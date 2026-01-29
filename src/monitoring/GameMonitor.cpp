@@ -16,6 +16,7 @@ int g_lastKnownPlaytime = 0;
 int g_currentCharacterId = -1;
 std::atomic<bool> g_sessionActive = false;
 std::atomic<bool> g_running = true;
+CharacterStats g_lastKnownStats{};
 
 static std::string WStringToString(const std::wstring& wstr) {
     if (wstr.empty()) return "";
@@ -76,6 +77,10 @@ void gameMonitorLoop() {
             if (g_sessionActive && *playtimeResult > 0) {
                 g_lastKnownDeaths = *deathsResult;
                 g_lastKnownPlaytime = *playtimeResult;
+                
+                if (auto stats = statsReader.GetCharacterStats()) {
+					g_lastKnownStats = *stats;
+                }
             }
 
             bool inBossFight = false;
@@ -131,6 +136,23 @@ void gameMonitorLoop() {
                         g_lastKnownDeaths,
                         g_currentCharacterId
                     );
+
+                    if (g_currentCharacterId > 0) {
+                        CharacterStatsRecord statsRecord{};
+                        
+                        statsRecord.level = g_lastKnownStats.level;
+                        statsRecord.vigor = g_lastKnownStats.vigor;
+                        statsRecord.attunement = g_lastKnownStats.attunement;
+                        statsRecord.endurance = g_lastKnownStats.endurance;
+                        statsRecord.vitality = g_lastKnownStats.vitality;
+                        statsRecord.strength = g_lastKnownStats.strength;
+                        statsRecord.dexterity = g_lastKnownStats.dexterity;
+                        statsRecord.intelligence = g_lastKnownStats.intelligence;
+                        statsRecord.faith = g_lastKnownStats.faith;
+                        statsRecord.luck = g_lastKnownStats.luck;
+
+                        g_sessionDb.SaveCharacterStats(g_currentCharacterId, statsRecord);
+                    }
 
                     g_sessionDb.UpdatePlayerStats(g_lastKnownDeaths, g_lastKnownPlaytime);
 

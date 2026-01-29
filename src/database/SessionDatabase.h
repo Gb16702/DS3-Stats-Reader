@@ -41,6 +41,21 @@ struct Character {
     std::string createdAt;
 };
 
+struct CharacterStatsRecord {
+	int characterId;
+	int level;
+	int vigor;
+	int attunement;
+	int endurance;
+	int vitality;
+	int strength;
+	int dexterity;
+	int intelligence;
+	int faith;
+	int luck;
+    std::string updatedAt;
+};
+
 class SessionDatabase {
 private:
     sqlite3* db = nullptr;
@@ -73,6 +88,9 @@ public:
     int GetOrCreateCharacter(const std::string& name, int classId);
     std::optional<Character> GetCharacter(int id);
     std::vector<Character> GetAllCharacters();
+
+	bool SaveCharacterStats(int characterId, const CharacterStatsRecord& statsRecord);
+	std::optional<CharacterStatsRecord> GetCharacterStats(int characterId);
 };
 
 extern SessionDatabase g_sessionDb;

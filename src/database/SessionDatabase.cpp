@@ -50,6 +50,24 @@ bool SessionDatabase::CreateTables() {
         )
     )";
 
+    const char* characterStatsSql = R"(
+        CREATE TABLE IF NOT EXISTS character_stats (
+            character_id INTEGER PRIMARY KEY,
+            level INTEGER,
+            vigor INTEGER,
+            attunement INTEGER,
+            endurance INTEGER,
+            vitality INTEGER,
+            strength INTEGER,
+            dexterity INTEGER,
+            intelligence INTEGER,
+            faith INTEGER,
+            luck INTEGER,
+            updated_at TEXT,
+            FOREIGN KEY (character_id) REFERENCES characters(id)
+      )
+    )";
+
     char* errMsg = nullptr;
 
     if (sqlite3_exec(db, charactersSql, nullptr, nullptr, &errMsg) != SQLITE_OK) {
@@ -72,6 +90,11 @@ bool SessionDatabase::CreateTables() {
 
     if (sqlite3_exec(db, deathsSql, nullptr, nullptr, &errMsg) != SQLITE_OK) {
         log(LogLevel::ERR, "Failed to create deaths table: " + std::string(errMsg));
+        sqlite3_free(errMsg);
+        return false;
+    }
+    if (sqlite3_exec(db, characterStatsSql, nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        log(LogLevel::ERR, "Failed to create character_stats table: " + std::string(errMsg));
         sqlite3_free(errMsg);
         return false;
     }
@@ -548,6 +571,82 @@ std::vector<Character> SessionDatabase::GetAllCharacters() {
 
     sqlite3_finalize(stmt);
     return characters;
+}
+
+bool SessionDatabase::SaveCharacterStats(int characterId, const CharacterStatsRecord& statsRecord) {
+    const char* sql = R"(
+        INSERT OR REPLACE INTO character_stats(
+            character_id, level, vigor, attunement, endurance, vitality,
+            strength, dexterity, intelligence, faith, luck, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    )";
+
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        log(LogLevel::ERR, "Failed to prepare SaveCharacterStats");
+        return false;
+    }
+
+    std::string timestamp = Stats::GetCurrentTimestamp();
+
+    sqlite3_bind_int(stmt, 1, characterId);
+    sqlite3_bind_int(stmt, 2, statsRecord.level);
+    sqlite3_bind_int(stmt, 3, statsRecord.vigor);
+    sqlite3_bind_int(stmt, 4, statsRecord.attunement);
+    sqlite3_bind_int(stmt, 5, statsRecord.endurance);
+    sqlite3_bind_int(stmt, 6, statsRecord.vitality);
+    sqlite3_bind_int(stmt, 7, statsRecord.strength);
+    sqlite3_bind_int(stmt, 8, statsRecord.dexterity);
+    sqlite3_bind_int(stmt, 9, statsRecord.intelligence);
+    sqlite3_bind_int(stmt, 10, statsRecord.faith);
+    sqlite3_bind_int(stmt, 11, statsRecord.luck);
+    sqlite3_bind_text(stmt, 12, timestamp.c_str(), -1, SQLITE_TRANSIENT);
+
+    int result = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    return result == SQLITE_DONE;
+}
+
+std::optional<CharacterStatsRecord> SessionDatabase::GetCharacterStats(int characterId) {
+    const char* sql = R"(
+        SELECT character_id, level, vigor, attunement, endurance, vitality,
+               strength, dexterity, intelligence, faith, luck, updated_at
+        FROM character_stats WHERE character_id = ?
+    )";
+
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        log(LogLevel::ERR, "Failed to prepare GetCharacterStats");
+        return std::nullopt;
+    }
+
+    sqlite3_bind_int(stmt, 1, characterId);
+
+    if (sqlite3_step(stmt) != SQLITE_ROW) {
+        sqlite3_finalize(stmt);
+        return std::nullopt;
+    }
+
+    CharacterStatsRecord statsRecord;
+    statsRecord.characterId = sqlite3_column_int(stmt, 0);
+    statsRecord.level = sqlite3_column_int(stmt, 1);
+    statsRecord.vigor = sqlite3_column_int(stmt, 2);
+    statsRecord.attunement = sqlite3_column_int(stmt, 3);
+    statsRecord.endurance = sqlite3_column_int(stmt, 4);
+    statsRecord.vitality = sqlite3_column_int(stmt, 5);
+    statsRecord.strength = sqlite3_column_int(stmt, 6);
+    statsRecord.dexterity = sqlite3_column_int(stmt, 7);
+    statsRecord.intelligence = sqlite3_column_int(stmt, 8);
+    statsRecord.faith = sqlite3_column_int(stmt, 9);
+    statsRecord.luck = sqlite3_column_int(stmt, 10);
+
+    if (auto text = sqlite3_column_text(stmt, 11)) {
+        statsRecord.updatedAt = reinterpret_cast<const char*>(text);
+    }
+
+    sqlite3_finalize(stmt);
+    return statsRecord;
 }
 
 void SessionDatabase::Close() {
