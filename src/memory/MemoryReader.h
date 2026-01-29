@@ -43,4 +43,5 @@ public:
     std::expected<void, MemoryReaderError> Initialize(const std::wstring& processName);
     uintptr_t GetModuleBase() const;
     bool IsInitialized() const;
+    bool IsProcessRunning() const;
 };

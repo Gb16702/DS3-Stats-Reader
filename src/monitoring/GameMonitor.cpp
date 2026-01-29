@@ -43,9 +43,57 @@ void gameMonitorLoop() {
                 sessionStartPoint = std::chrono::steady_clock::now();
                 log(LogLevel::INFO, "Game detected by monitor");
             } else {
-                std::this_thread::sleep_for(std::chrono::seconds(2));
+                std::this_thread::sleep_for(std::chrono::milliseconds(1500));
                 continue;
             }
+        }
+
+        if (!statsReader.IsProcessRunning()) {
+            if (wasConnected) {
+                log(LogLevel::INFO, "Game closed");
+
+                if (g_sessionActive) {
+                    auto endPoint = std::chrono::steady_clock::now();
+                    auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(endPoint - sessionStartPoint).count();
+                    std::string endTimestamp = Stats::GetCurrentTimestamp();
+
+                    g_sessionDb.SaveSession(
+                        g_sessionStartTime,
+                        endTimestamp,
+                        static_cast<int>(durationMs),
+                        g_startingDeaths,
+                        g_lastKnownDeaths,
+                        g_currentCharacterId
+                    );
+
+                    if (g_currentCharacterId > 0) {
+                        CharacterStatsRecord statsRecord{};
+
+                        statsRecord.level = g_lastKnownStats.level;
+                        statsRecord.vigor = g_lastKnownStats.vigor;
+                        statsRecord.attunement = g_lastKnownStats.attunement;
+                        statsRecord.endurance = g_lastKnownStats.endurance;
+                        statsRecord.vitality = g_lastKnownStats.vitality;
+                        statsRecord.strength = g_lastKnownStats.strength;
+                        statsRecord.dexterity = g_lastKnownStats.dexterity;
+                        statsRecord.intelligence = g_lastKnownStats.intelligence;
+                        statsRecord.faith = g_lastKnownStats.faith;
+                        statsRecord.luck = g_lastKnownStats.luck;
+
+                        g_sessionDb.SaveCharacterStats(g_currentCharacterId, statsRecord);
+                    }
+
+                    g_sessionDb.UpdatePlayerStats(g_lastKnownDeaths, g_lastKnownPlaytime);
+
+                    g_sessionActive = false;
+                    g_startingDeaths = -1;
+                    g_currentCharacterId = -1;
+                }
+
+                wasConnected = false;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+            continue;
         }
 
         auto deathsResult = statsReader.GetDeathCount();
@@ -117,54 +165,8 @@ void gameMonitorLoop() {
             }
 
             wasInBossFight = inBossFight;
-        } else {
-            auto reinitResult = statsReader.Initialize();
-
-            if (!reinitResult && wasConnected) {
-                log(LogLevel::INFO, "Game closed");
-
-                if (g_sessionActive) {
-                    auto endPoint = std::chrono::steady_clock::now();
-                    auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(endPoint - sessionStartPoint).count();
-                    std::string endTimestamp = Stats::GetCurrentTimestamp();
-
-                    g_sessionDb.SaveSession(
-                        g_sessionStartTime,
-                        endTimestamp,
-                        static_cast<int>(durationMs),
-                        g_startingDeaths,
-                        g_lastKnownDeaths,
-                        g_currentCharacterId
-                    );
-
-                    if (g_currentCharacterId > 0) {
-                        CharacterStatsRecord statsRecord{};
-                        
-                        statsRecord.level = g_lastKnownStats.level;
-                        statsRecord.vigor = g_lastKnownStats.vigor;
-                        statsRecord.attunement = g_lastKnownStats.attunement;
-                        statsRecord.endurance = g_lastKnownStats.endurance;
-                        statsRecord.vitality = g_lastKnownStats.vitality;
-                        statsRecord.strength = g_lastKnownStats.strength;
-                        statsRecord.dexterity = g_lastKnownStats.dexterity;
-                        statsRecord.intelligence = g_lastKnownStats.intelligence;
-                        statsRecord.faith = g_lastKnownStats.faith;
-                        statsRecord.luck = g_lastKnownStats.luck;
-
-                        g_sessionDb.SaveCharacterStats(g_currentCharacterId, statsRecord);
-                    }
-
-                    g_sessionDb.UpdatePlayerStats(g_lastKnownDeaths, g_lastKnownPlaytime);
-
-                    g_sessionActive = false;
-                    g_startingDeaths = -1;
-                    g_currentCharacterId = -1;
-                }
-
-                wasConnected = false;
-            }
         }
 
-        std::this_thread::sleep_for(std::chrono::seconds(2));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1500));
     }
 }

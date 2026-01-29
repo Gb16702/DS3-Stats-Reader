@@ -48,18 +48,28 @@ void discordUpdateLoop() {
             }
         }
 
-        if (minutesSinceSync >= 5) {
-            auto deathsResult = statsReader.GetDeathCount();
-
-            if (deathsResult) {
-                currentDeaths = *deathsResult;
+        if (!statsReader.IsProcessRunning()) {
+            if (gameConnected) {
+                log(LogLevel::WARN, "Game disconnected");
+                Discord_ClearPresence();
+                gameConnected = false;
             }
-            minutesSinceSync = 0;
+            Discord_RunCallbacks();
+            g_discordCv.wait_for(lock, std::chrono::seconds(15));
+            continue;
         }
 
         auto playtimeResult = statsReader.GetPlayTime();
         if (playtimeResult) {
             currentPlaytime = *playtimeResult;
+        }
+
+        if (minutesSinceSync >= 5) {
+            auto deathsResult = statsReader.GetDeathCount();
+            if (deathsResult) {
+                currentDeaths = *deathsResult;
+            }
+            minutesSinceSync = 0;
         }
 
         std::string zoneName = "Unknown Area";

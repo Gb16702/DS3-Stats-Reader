@@ -81,3 +81,16 @@ uintptr_t MemoryReader::GetModuleBase() const {
 bool MemoryReader::IsInitialized() const {
     return processHandle != nullptr;
 }
+
+bool MemoryReader::IsProcessRunning() const {
+    if (!processHandle) {
+        return false;
+    }
+
+    DWORD exitCode = 0;
+    if (!GetExitCodeProcess(processHandle, &exitCode)) {
+        return false;
+    }
+
+    return exitCode == STILL_ACTIVE;
+}
