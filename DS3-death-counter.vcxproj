@@ -22,9 +22,9 @@
     <VCProjectVersion>18.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{361fe402-176f-4953-94c7-b3b5dd98a1a2}</ProjectGuid>
-    <RootNamespace>DS3deathcounter</RootNamespace>
+    <RootNamespace>Ember</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>DS3-stats-reader</ProjectName>
+    <ProjectName>Ember</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

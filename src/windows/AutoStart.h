@@ -3,7 +3,7 @@
 class AutoStart {
 private:
     static constexpr const wchar_t* RUN_KEY = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-    static constexpr const wchar_t* APP_NAME = L"DS3StatsReader";
+    static constexpr const wchar_t* APP_NAME = L"Ember";
 
 public:
     static bool Enable();

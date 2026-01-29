@@ -18,7 +18,7 @@
 int main() {
     auto startTime = std::chrono::steady_clock::now();
 
-    log(LogLevel::INFO, "Starting DS3 Stats Reader v" + std::string(APP_VERSION));
+    log(LogLevel::INFO, "Starting Ember v" + std::string(APP_VERSION));
 
     g_settings.LoadSettings();
     g_sessionDb.Open();
