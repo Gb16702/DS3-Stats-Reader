@@ -4,6 +4,7 @@
 
 #include <expected>
 #include <cstdint>
+#include <string>
 
 class DS3StatsReader {
 private:
@@ -24,10 +25,16 @@ private:
     static constexpr uintptr_t PLAYER_HP_STRUCT_OFFSET = 0x18;
     static constexpr uintptr_t PLAYER_HP_OFFSET = 0xD8;
 
+    static constexpr uintptr_t CHARACTER_DATA_OFFSET = 0x10;
+    static constexpr uintptr_t CHARACTER_NAME_OFFSET = 0x88;
+    static constexpr uintptr_t CHARACTER_LEVEL_OFFSET = 0x70;
+    static constexpr uintptr_t CHARACTER_CLASS_OFFSET = 0xAE;
+
     static constexpr wchar_t PROCESS_NAME[] = L"DarkSoulsIII.exe";
 
     std::expected<uint32_t, MemoryReaderError> ReadGameData(uintptr_t basePointer, uintptr_t offset);
     std::expected<uint32_t, MemoryReaderError> ReadWorldChrData(uintptr_t offset);
+    std::expected<uintptr_t, MemoryReaderError> GetCharacterDataBase();
 
 public:
     std::expected<void, MemoryReaderError> Initialize();
@@ -38,4 +45,8 @@ public:
     std::expected<uint32_t, MemoryReaderError> GetPlayRegion();
     std::expected<bool, MemoryReaderError> GetInBossFight();
     std::expected<int32_t, MemoryReaderError> GetPlayerHP();
+
+    std::expected<std::wstring, MemoryReaderError> GetCharacterName();
+    std::expected<uint32_t, MemoryReaderError> GetSoulLevel();
+    std::expected<uint8_t, MemoryReaderError> GetClass();
 };

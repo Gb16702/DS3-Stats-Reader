@@ -113,3 +113,61 @@ std::expected<int32_t, MemoryReaderError> DS3StatsReader::GetPlayerHP() {
 
     return hp;
 }
+
+std::expected<uintptr_t, MemoryReaderError> DS3StatsReader::GetCharacterDataBase() {
+    uintptr_t pointerAddress = reader.GetModuleBase() + GAMEDATAMAN_POINTER;
+
+    uintptr_t gameDataMan = 0;
+    if (!reader.ReadMemory(pointerAddress, gameDataMan) || gameDataMan == 0) {
+        return std::unexpected(MemoryReaderError::ReadFailed);
+    }
+
+    uintptr_t characterData = 0;
+    if (!reader.ReadMemory(gameDataMan + CHARACTER_DATA_OFFSET, characterData) || characterData == 0) {
+        return std::unexpected(MemoryReaderError::ReadFailed);
+    }
+
+    return characterData;
+}
+
+std::expected<std::wstring, MemoryReaderError> DS3StatsReader::GetCharacterName() {
+    auto baseResult = GetCharacterDataBase();
+    if (!baseResult) {
+        return std::unexpected(baseResult.error());
+    }
+
+    wchar_t nameBuffer[24] = {0};
+    if (!reader.ReadMemory(*baseResult + CHARACTER_NAME_OFFSET, nameBuffer)) {
+        return std::unexpected(MemoryReaderError::ReadFailed);
+    }
+
+    return std::wstring(nameBuffer);
+}
+
+std::expected<uint32_t, MemoryReaderError> DS3StatsReader::GetSoulLevel() {
+    auto baseResult = GetCharacterDataBase();
+    if (!baseResult) {
+        return std::unexpected(baseResult.error());
+    }
+
+    uint32_t level = 0;
+    if (!reader.ReadMemory(*baseResult + CHARACTER_LEVEL_OFFSET, level)) {
+        return std::unexpected(MemoryReaderError::ReadFailed);
+    }
+
+    return level;
+}
+
+std::expected<uint8_t, MemoryReaderError> DS3StatsReader::GetClass() {
+    auto baseResult = GetCharacterDataBase();
+    if (!baseResult) {
+        return std::unexpected(baseResult.error());
+    }
+
+    uint8_t classId = 0;
+    if (!reader.ReadMemory(*baseResult + CHARACTER_CLASS_OFFSET, classId)) {
+        return std::unexpected(MemoryReaderError::ReadFailed);
+    }
+
+    return classId;
+}

@@ -7,13 +7,23 @@
 
 #include <chrono>
 #include <thread>
+#include <Windows.h>
 
 std::string g_sessionStartTime;
 int g_startingDeaths = -1;
 int g_lastKnownDeaths = 0;
 int g_lastKnownPlaytime = 0;
+int g_currentCharacterId = -1;
 std::atomic<bool> g_sessionActive = false;
 std::atomic<bool> g_running = true;
+
+static std::string WStringToString(const std::wstring& wstr) {
+    if (wstr.empty()) return "";
+    int size = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    std::string result(size - 1, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, result.data(), size, nullptr, nullptr);
+    return result;
+}
 
 void gameMonitorLoop() {
     DS3StatsReader statsReader;
@@ -46,6 +56,19 @@ void gameMonitorLoop() {
                 g_startingDeaths = *deathsResult;
                 g_lastKnownDeaths = *deathsResult;
                 g_lastKnownPlaytime = *playtimeResult;
+
+                auto nameResult = statsReader.GetCharacterName();
+                auto classResult = statsReader.GetClass();
+
+                if (nameResult && classResult) {
+                    std::string charName = WStringToString(*nameResult);
+                    g_currentCharacterId = g_sessionDb.GetOrCreateCharacter(charName, *classResult);
+                    log(LogLevel::INFO, "Character: " + charName + " (ID: " + std::to_string(g_currentCharacterId) + ")");
+                } else {
+                    g_currentCharacterId = -1;
+                    log(LogLevel::WARN, "Could not read character info");
+                }
+
                 g_sessionActive = true;
                 sessionStartPoint = std::chrono::steady_clock::now();
                 log(LogLevel::INFO, "Session started with " + std::to_string(g_startingDeaths) + " deaths");
@@ -78,9 +101,9 @@ void gameMonitorLoop() {
                 log(LogLevel::INFO, "Entered boss fight: " + GetZoneName(currentZoneId));
             }
 
-            if (playerHP <= 0 && !deathRecorded && currentZoneId != 0) {
+            if (playerHP <= 0 && !deathRecorded && currentZoneId != 0 && g_currentCharacterId > 0) {
                 std::string zoneName = GetZoneName(currentZoneId);
-                g_sessionDb.SaveDeath(currentZoneId, zoneName, inBossFight);
+                g_sessionDb.SaveDeath(currentZoneId, zoneName, g_currentCharacterId);
                 deathRecorded = true;
             }
 
@@ -105,13 +128,15 @@ void gameMonitorLoop() {
                         endTimestamp,
                         static_cast<int>(durationMs),
                         g_startingDeaths,
-                        g_lastKnownDeaths
+                        g_lastKnownDeaths,
+                        g_currentCharacterId
                     );
 
                     g_sessionDb.UpdatePlayerStats(g_lastKnownDeaths, g_lastKnownPlaytime);
 
                     g_sessionActive = false;
                     g_startingDeaths = -1;
+                    g_currentCharacterId = -1;
                 }
 
                 wasConnected = false;
