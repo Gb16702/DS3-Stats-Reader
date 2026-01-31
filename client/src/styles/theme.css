@@ -1,126 +1,126 @@
 @theme {
-  --font-sans:
-    "Geist", Arial, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
-  --font-sans-fallback:
-    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
+    --font-sans:
+        "Geist", Arial, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;
+    --font-sans-fallback:
+        "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+        "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
+        "Helvetica Neue", sans-serif;
 
-  --text-xs: 13px;
-  --text-base: 15px;
+    --text-xs: 13px;
+    --text-base: 15px;
 
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
-  --radius-2xl: 28px;
-  --radius-full: 50px;
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --radius-xl: 24px;
+    --radius-2xl: 28px;
+    --radius-full: 50px;
 
-  --width-4xl: 1150px;
-  --width-5xl: 1200px;
-  --width-6xl: 1300px;
-  --width-7xl: 1400px;
+    --width-4xl: 1150px;
+    --width-5xl: 1200px;
+    --width-6xl: 1300px;
+    --width-7xl: 1400px;
 
-  --color-ds-background-100: #010000;
-  --color-ds-background-200: #0b0a0a;
+    --color-ds-background-100: #010000;
+    --color-ds-background-200: #0b0a0a;
 
-  --color-ds-gray-100: #1b1b1a;
-  --color-ds-gray-200: #1f1e1f;
-  --color-ds-gray-300: #292928;
-  --color-ds-gray-400: #2e2e2e;
-  --color-ds-gray-500: #454544;
-  --color-ds-gray-600: #878786;
-  --color-ds-gray-700: #8e8f8f;
-  --color-ds-gray-800: #7d7d7c;
-  --color-ds-gray-900: #a0a1a1;
-  --color-ds-gray-1000: #ededed;
+    --color-ds-gray-100: #1b1b1a;
+    --color-ds-gray-200: #1f1e1f;
+    --color-ds-gray-300: #292928;
+    --color-ds-gray-400: #2e2e2e;
+    --color-ds-gray-500: #454544;
+    --color-ds-gray-600: #878786;
+    --color-ds-gray-700: #8e8f8f;
+    --color-ds-gray-800: #7d7d7c;
+    --color-ds-gray-900: #a0a1a1;
+    --color-ds-gray-1000: #ededed;
 
-  --color-ds-blue-100: #0e1c2e;
-  --color-ds-blue-200: #11233c;
-  --color-ds-blue-300: #0e2f56;
-  --color-ds-blue-400: #0d3868;
-  --color-ds-blue-500: #0a4280;
-  --color-ds-blue-600: #0191ff;
-  --color-ds-blue-700: #0073f4;
-  --color-ds-blue-800: #0162d0;
-  --color-ds-blue-900: #53a8fe;
-  --color-ds-blue-1000: #ebf7fe;
+    --color-ds-blue-100: #0e1c2e;
+    --color-ds-blue-200: #11233c;
+    --color-ds-blue-300: #0e2f56;
+    --color-ds-blue-400: #0d3868;
+    --color-ds-blue-500: #0a4280;
+    --color-ds-blue-600: #0191ff;
+    --color-ds-blue-700: #0073f4;
+    --color-ds-blue-800: #0162d0;
+    --color-ds-blue-900: #53a8fe;
+    --color-ds-blue-1000: #ebf7fe;
 
-  --color-ds-red-100: #2a1314;
-  --color-ds-red-200: #3c1718;
-  --color-ds-red-300: #561a1e;
-  --color-ds-red-400: #661f20;
-  --color-ds-red-500: #832027;
-  --color-ds-red-600: #e5484d;
-  --color-ds-red-700: #e5484d;
-  --color-ds-red-800: #d83137;
-  --color-ds-red-900: #fe6066;
-  --color-ds-red-1000: #ffedef;
+    --color-ds-red-100: #2a1314;
+    --color-ds-red-200: #3c1718;
+    --color-ds-red-300: #561a1e;
+    --color-ds-red-400: #661f20;
+    --color-ds-red-500: #832027;
+    --color-ds-red-600: #e5484d;
+    --color-ds-red-700: #e5484d;
+    --color-ds-red-800: #d83137;
+    --color-ds-red-900: #fe6066;
+    --color-ds-red-1000: #ffedef;
 
-  --color-ds-green-100: #0b2213;
-  --color-ds-green-200: #0f2f19;
-  --color-ds-green-300: #12361b;
-  --color-ds-green-400: #0c451a;
-  --color-ds-green-500: #126526;
-  --color-ds-green-600: #1b9238;
-  --color-ds-green-700: #44a557;
-  --color-ds-green-800: #398e4a;
-  --color-ds-green-900: #62c073;
-  --color-ds-green-1000: #e4fbeb;
+    --color-ds-green-100: #0b2213;
+    --color-ds-green-200: #0f2f19;
+    --color-ds-green-300: #12361b;
+    --color-ds-green-400: #0c451a;
+    --color-ds-green-500: #126526;
+    --color-ds-green-600: #1b9238;
+    --color-ds-green-700: #44a557;
+    --color-ds-green-800: #398e4a;
+    --color-ds-green-900: #62c073;
+    --color-ds-green-1000: #e4fbeb;
 
-  --color-ds-orange-100: #2b1400;
-  --color-ds-orange-200: #391a00;
-  --color-ds-orange-300: #4e2400;
-  --color-ds-orange-400: #5c2d05;
-  --color-ds-orange-500: #7a3d0a;
-  --color-ds-orange-600: #e56610;
-  --color-ds-orange-700: #ff7a1f;
-  --color-ds-orange-800: #ed6005;
-  --color-ds-orange-900: #ff9e5e;
-  --color-ds-orange-1000: #fef0e6;
+    --color-ds-orange-100: #2b1400;
+    --color-ds-orange-200: #391a00;
+    --color-ds-orange-300: #4e2400;
+    --color-ds-orange-400: #5c2d05;
+    --color-ds-orange-500: #7a3d0a;
+    --color-ds-orange-600: #e56610;
+    --color-ds-orange-700: #ff7a1f;
+    --color-ds-orange-800: #ed6005;
+    --color-ds-orange-900: #ff9e5e;
+    --color-ds-orange-1000: #fef0e6;
 
-  --color-ds-cyan-100: #041e26;
-  --color-ds-cyan-200: #052832;
-  --color-ds-cyan-300: #063948;
-  --color-ds-cyan-400: #044455;
-  --color-ds-cyan-500: #066275;
-  --color-ds-cyan-600: #0b94b8;
-  --color-ds-cyan-700: #12a6cc;
-  --color-ds-cyan-800: #0a8dae;
-  --color-ds-cyan-900: #3dc7e5;
-  --color-ds-cyan-1000: #e0f7fc;
+    --color-ds-cyan-100: #041e26;
+    --color-ds-cyan-200: #052832;
+    --color-ds-cyan-300: #063948;
+    --color-ds-cyan-400: #044455;
+    --color-ds-cyan-500: #066275;
+    --color-ds-cyan-600: #0b94b8;
+    --color-ds-cyan-700: #12a6cc;
+    --color-ds-cyan-800: #0a8dae;
+    --color-ds-cyan-900: #3dc7e5;
+    --color-ds-cyan-1000: #e0f7fc;
 
-  --color-ds-teal-100: #05211b;
-  --color-ds-teal-200: #062922;
-  --color-ds-teal-300: #083b32;
-  --color-ds-teal-400: #053d35;
-  --color-ds-teal-500: #085f53;
-  --color-ds-teal-600: #0d9784;
-  --color-ds-teal-700: #13a594;
-  --color-ds-teal-800: #0c8d7c;
-  --color-ds-teal-900: #0ac7b4;
-  --color-ds-teal-1000: #e0faf4;
+    --color-ds-teal-100: #05211b;
+    --color-ds-teal-200: #062922;
+    --color-ds-teal-300: #083b32;
+    --color-ds-teal-400: #053d35;
+    --color-ds-teal-500: #085f53;
+    --color-ds-teal-600: #0d9784;
+    --color-ds-teal-700: #13a594;
+    --color-ds-teal-800: #0c8d7c;
+    --color-ds-teal-900: #0ac7b4;
+    --color-ds-teal-1000: #e0faf4;
 
-  --color-ds-amber-100: #291800;
-  --color-ds-amber-200: #331b00;
-  --color-ds-amber-300: #4d2b00;
-  --color-ds-amber-400: #563200;
-  --color-ds-amber-500: #6b4105;
-  --color-ds-amber-600: #e69d13;
-  --color-ds-amber-700: #ffb224;
-  --color-ds-amber-800: #ff980a;
-  --color-ds-amber-900: #f2a20d;
-  --color-ds-amber-1000: #fef2dc;
+    --color-ds-amber-100: #291800;
+    --color-ds-amber-200: #331b00;
+    --color-ds-amber-300: #4d2b00;
+    --color-ds-amber-400: #563200;
+    --color-ds-amber-500: #6b4105;
+    --color-ds-amber-600: #e69d13;
+    --color-ds-amber-700: #ffb224;
+    --color-ds-amber-800: #ff980a;
+    --color-ds-amber-900: #f2a20d;
+    --color-ds-amber-1000: #fef2dc;
 
-  --color-ds-component-100: #1b1a1a;
-  --color-ds-component-200: #1e1f1f;
-  --color-ds-component-300: #282929;
+    --color-ds-component-100: #1b1a1a;
+    --color-ds-component-200: #1e1f1f;
+    --color-ds-component-300: #282929;
 
-  --color-ds-border-default: #2e2f2e;
-  --color-ds-border-hover: #454544;
-  --color-ds-border-active: #878786;
+    --color-ds-border-default: #2a2b2a;
+    --color-ds-border-hover: #3f3f3e;
+    --color-ds-border-active: #7a7a79;
 
-  --color-ds-text-primary: #ededec;
-  --color-ds-text-secondary: #a0a1a1;
+    --color-ds-text-primary: #ededec;
+    --color-ds-text-secondary: #a0a1a1;
 }
